@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.50.0/dist/phaser-arcade-physics.min.js"></script>
+    <style>
+        .outer-container {
+            display: table;
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 100%;
+        }
+
+        #game-container {
+            border: 5px solid white;
+            width: 800px;
+            height: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .middle {
+            display: table-cell;
+            vertical-align: middle;
+            animation: xmas 12s infinite;
+        }
+
+        @keyframes xmas {
+            0% {
+                background-color: #B3000C;
+            }
+
+            33% {
+                background-color: #D8D8D8;
+            }
+
+            66% {
+                background-color: #00B32C;
+            }
+
+            100% {
+                background-color: #B3000C;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="outer-container">
+        <div class="middle">
+            <div id="game-container">
+            </div>
+        </div>
+    </div>
+    <script>
+        var config = {
+            type: Phaser.AUTO,
+            width: 800,
+            height: 600,
+            parent: 'game-container',
+            physics: {
+                default: 'arcade',
+                arcade: {
+                    gravity: { y: 300 },
+                    debug: false
+                }
+            },
+            scene: {
+                preload: preload,
+                create: create,
+                update: update
+            }
+        };
+
+        var game = new Phaser.Game(config);
+
+        var FinalScene = new Phaser.Class({
+
+            Extends: Phaser.scene,
+            initialize: function () {
+                Phaser.Scene.call(this, { key: 'finalScene' });
+            },
+            init: function () { },
+            preload: function () {
+                this.load.image('kings0', 'assets/kings0.png');
+                this.load.image('kings', 'assets/kings.jpg');
+                this.load.image('final', 'assets/final.png');
+            },
+
+            create: function () {
+                this.face = this.add.image(0, 0, 'kings0').setOrigin(0, 0);
+                this.time.addEvent({
+                    delay: 4000,
+                    loop: false,
+                    callback: () => {
+                        this.face = this.add.image(0, 0, 'kings').setOrigin(0, 0);
+                        this.time.addEvent({
+                            delay: 4000,
+                            loop: false,
+                            callback: () => {
+                                this.face = this.add.image(0, 0, 'final').setOrigin(0, 0);
+                            }
+                        })
+                    }
+                });
+            }
+
+        });
+
+        function preload() {
+            this.load.image('sky', 'assets/sky.png');
+            this.load.image('ground', 'assets/platform.png');
+            this.load.image('gift1', 'assets/gift1.png');
+            this.load.image('gift2', 'assets/gift2.png');
+            this.load.image('gift3', 'assets/gift3.png');
+            this.load.image('ball', 'assets/ball.png');
+            this.load.image('flakes', 'assets/flake.png');
+            this.load.image('lights', 'assets/lights.png');
+            this.load.spritesheet('dude',
+                'assets/kid.png',
+                { frameWidth: 38, frameHeight: 59 }
+            );
+            this.load.audio('song', ['assets/bg.mp3']);
+        }
+
+        function create() {
+            var giftsCollected = 0;
+            music = this.sound.add('song');
+            music.play();
+
+            this.add.image(0, 0, 'sky').setOrigin(0, 0);
+            gifts = this.physics.add.staticGroup();
+            gifts.create(Phaser.Math.Between(150, 200), 150, 'gift1');
+            gifts.create(Phaser.Math.Between(250, 450), 400, 'gift2');
+            gifts.create(Phaser.Math.Between(450, 600), 300, 'gift3');
+
+            platforms = this.physics.add.staticGroup();
+
+            platforms.create(400, 568, 'ground').setScale(2).refreshBody();
+            var style1 = { font: "24px Arial", fill: "gold", align: "center" };
+            var style2 = { font: "14px Arial", fill: "yellow", align: "center" };
+            var msg1 = 'Help the three kings collect gifts for Jesus!'
+            this.add.image(0, 0, 'lights').setOrigin(0, 0);
+            text1 = this.add.text(180, 545, msg1, style1);
+            text2 = this.add.text(350, 575, '(Use Arrow Keys)', style2);
+
+            blitter = this.add.blitter(0, 0, 'flakes');
+            this.time.addEvent({ delay: 600, callback: launch, callbackScope: this, repeat: -1 });
+
+            player = this.physics.add.sprite(100, 450, 'dude');
+
+            player.setBounce(0.2);
+            player.setCollideWorldBounds(true);
+
+            balls = this.physics.add.group();
+            var ball = balls.create(0, 16, 'ball');
+            ball.setBounce(1);
+            ball.setCollideWorldBounds(true);
+            ball.setVelocity(Phaser.Math.Between(-200, 200), 20);
+
+            this.anims.create({
+                key: 'right',
+                frames: this.anims.generateFrameNumbers('dude', { start: 0, end: 3 }),
+                frameRate: 10,
+                repeat: -1
+            });
+
+            this.anims.create({
+                key: 'turn',
+                frames: [{ key: 'dude', frame: 2 }],
+                frameRate: 20
+            });
+
+            this.anims.create({
+                key: 'left',
+                frames: this.anims.generateFrameNumbers('dude', { start: 5, end: 8 }),
+                frameRate: 10,
+                repeat: -1
+            });
+
+            this.physics.add.collider(player, platforms);
+            this.physics.add.collider(player, ball);
+            this.physics.add.collider(platforms, ball);
+
+            cursors = this.input.keyboard.createCursorKeys();
+
+            this.physics.add.overlap(player, gifts, collectGift, null, this);
+
+            function launch() {
+                var bob = blitter.create(Phaser.Math.Between(0, 800), -100, Phaser.Math.Between(0, 5));
+                this.tweens.add({
+                    targets: bob,
+                    y: 800,
+                    duration: Phaser.Math.Between(8000, 20000),
+                    ease: 'Sine.easeInOut',
+                    onComplete: function () {
+                        bob.destroy();
+                    }
+                });
+            }
+
+            function collectGift(player, gift) {
+                gift.disableBody(true, true);
+                giftsCollected++;
+                if (giftsCollected == 3) {
+                    this.time.addEvent({
+                        delay: 1000,
+                        loop: false,
+                        callback: () => {
+                            this.scene.add('finalScene', FinalScene, true);
+                        }
+                    })
+                }
+            }
+        }
+
+        function update() {
+            if (cursors.left.isDown) {
+                player.setVelocityX(-160);
+
+                player.anims.play('left', true);
+            }
+            else if (cursors.right.isDown) {
+                player.setVelocityX(160);
+
+                player.anims.play('right', true);
+            }
+            else {
+                player.setVelocityX(0);
+                player.anims.play('turn');
+            }
+
+            if (cursors.up.isDown && player.body.touching.down) {
+                player.setVelocityY(-330);
+            }
+        }
+    </script>
+</body>
+
+</html>
