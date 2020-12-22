@@ -128,6 +128,7 @@
         function create() {
             var giftsCollected = 0;
             music = this.sound.add('song');
+            music.loop = true;
             music.play();
 
             this.add.image(0, 0, 'sky').setOrigin(0, 0);
@@ -216,7 +217,7 @@
             }
         }
 
-        function update() {
+        function update() {   
             if (cursors.left.isDown) {
                 player.setVelocityX(-160);
 
